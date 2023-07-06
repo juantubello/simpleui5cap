@@ -1,0 +1,93 @@
+_schema-version: '3.2'
+ID: APPMTA
+description: Fiori elements app
+version: 0.0.1
+modules:
+  - name: APPMTA-dest-content
+    type: com.sap.application.content
+    requires:
+      - name: APPMTA-destination-service
+        parameters:
+          content-target: true
+      - name: APPMTA-repo-host
+        parameters:
+          service-key:
+            name: APPMTA-repo-host-key
+      - name: APPMTA-uaa
+        parameters:
+          service-key:
+            name: APPMTA-uaa-key
+    parameters:
+      content:
+        instance:
+          destinations:
+            - Name: APPMTA_repo_host
+              ServiceInstanceName: APPMTA-html5-srv
+              ServiceKeyName: APPMTA-repo-host-key
+              sap.cloud.service: APPMTA
+            - Authentication: OAuth2UserTokenExchange
+              Name: APPMTA_uaa
+              ServiceInstanceName: APPMTA-xsuaa-srv
+              ServiceKeyName: APPMTA-uaa-key
+              sap.cloud.service: APPMTA
+          existing_destinations_policy: update
+    build-parameters:
+      no-source: true
+  - name: APPMTA-app-content
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: APPMTA-repo-host
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources
+      requires:
+        - artifacts:
+            - appmta.zip
+          name: appmta
+          target-path: resources/
+  - name: appmta
+    type: html5
+    path: appmta
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands:
+        - npm install
+        - 'npm run build:cf'
+      supported-platforms: []
+resources:
+  - name: APPMTA-uaa
+    type: org.cloudfoundry.managed-service
+    parameters:
+      path: ./xs-security.json
+      service: xsuaa
+      service-name: APPMTA-xsuaa-srv
+      service-plan: application
+  - name: APPMTA-destination-service
+    type: org.cloudfoundry.managed-service
+    parameters:
+      config:
+        HTML5Runtime_enabled: true
+        init_data:
+          instance:
+            destinations:
+              - Authentication: NoAuthentication
+                Name: ui5
+                ProxyType: Internet
+                Type: HTTP
+                URL: 'https://ui5.sap.com'
+            existing_destinations_policy: update
+        version: 1.0.0
+      service: destination
+      service-name: APPMTA-destination-service
+      service-plan: lite
+  - name: APPMTA-repo-host
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-name: APPMTA-html5-srv
+      service-plan: app-host
+parameters:
+  deploy_mode: html5-repo
